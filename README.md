@@ -1,2 +1,5 @@
-# DataBase_Project
-step 1: create a data base table 'Professors' using Python and SQLite
+# Проект по базе данных. Ресторан.
+## Группа 696
+**Участники**
+* Мария Феофанова
+* Ольга С.
