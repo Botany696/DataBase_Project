@@ -21,7 +21,7 @@ CREATE TABLE Бронирование (
     Места INT,
     Доступен BOOLEAN,
     Цена MONEY,
-    Дата TIMESTAMP,
+    Дата TIMESTAMP WITHOUT TIME ZONE,
     Время INTERVAL
 );
 
