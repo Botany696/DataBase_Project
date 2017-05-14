@@ -9,7 +9,7 @@ import re
 
 step = {}
 ordername = {}
-BOOK_DATE, BOOK_RES, BOOK_CHOICE, MENU_VEG, MENU_SHOW, ORDER, ORDER_INSERT = range(7)
+BOOK_DATE, BOOK_RES, BOOK_CHOICE, MENU_VEG, MENU_SHOW, ORDER, ORDER_INSERT, CHANGE_END = range(8)
 
 def start(bot, update):
     id = update.message.chat_id
@@ -254,6 +254,8 @@ def order_insert(bot, update, user_data):
         return ORDER_INSERT
     conn = sqlite3.connect('Restaurant.db')
     c = conn.cursor()
+    c.execute('PRAGMA foreign_keys = ON;')
+    conn.commit()
     c.execute("SELECT Блюдо, Цена FROM Блюда WHERE Название ='%s' " % (str(user_data['dish'])))
     row = c.fetchone()
     if row is None:
@@ -283,16 +285,40 @@ def cancel(bot, update, user_data):
         return ConversationHandler.END
     conn = sqlite3.connect('Restaurant.db')
     c = conn.cursor()
-    print('g')
+    c.execute('PRAGMA foreign_keys = ON;')
+    conn.commit()
     c.execute("DELETE FROM Бронирования WHERE Столик='%s' AND Дата='%s' " % (user_data['book'], user_data['date']))
-    print('g')
     conn.commit()
     c.close()
     conn.close()
     update.message.reply_text('Столик №' + str(user_data['book']) + ' снова свободен для бронирования на ' + str(user_data['date']) + '!')
     return ConversationHandler.END
 #Удаление брони - конец
-def end(bot, update):
+#Изменение брони
+def change(bot, update, user_data):
+    update.message.reply_text('Введите номер столика, на который вы бы хотели поменять вашу бронь.')
+    return CHANGE_END
+    
+def change_end(bot, update, user_data):
+    if 'book' not in user_data:
+        update.message.reply_text('Вы не бронировали столик в этом сеансе.')
+        return ConversationHandler.END
+    conn = sqlite3.connect('Restaurant.db')
+    c = conn.cursor()
+    try:
+        c.execute('PRAGMA foreign_keys = ON;')
+        conn.commit()
+        c.execute("UPDATE Бронирования SET Столик='%s' WHERE Столик='%s' AND Дата='%s' " % (update.message.text, user_data['book'], user_data['date']))
+        conn.commit()
+    except:
+        update.message.reply_text('Ошибка! Столика не существует либо он уже был забронирован. Чтобы отменить прошлую бронь, введите /cancel')
+    c.close()
+    conn.close()
+    update.message.reply_text('Столик №' + str(user_data['book']) + ' изменен на столик №' + str(update.message.text) + ', на ' + str(user_data['date']) + '!')
+    user_data['book']=update.message.text
+    return ConversationHandler.END
+#Изменение брони - конец
+def end(bot, update, user_data):
     update.message.reply_text('До скорой встречи и приятного аппетита!\n Чтобы получить справку, наберите /start',
                               reply_markup=ReplyKeyboardRemove())
     user_data.clear()
@@ -309,10 +335,11 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start), 
         CommandHandler("order", order, pass_user_data=True), 
-        CommandHandler("end", end), 
+        CommandHandler("end", end, pass_user_data=True), 
         CommandHandler("book", book),
         CommandHandler("menu", menu),
-        CommandHandler("cancel", cancel, pass_user_data=True)],
+        CommandHandler("cancel", cancel, pass_user_data=True),
+        CommandHandler("change", change, pass_user_data=True)],
 
         states={
             BOOK_DATE: [RegexHandler('^(VIP|У окна|В зале|Все равно)$', book_date, pass_user_data=True)],
@@ -322,7 +349,8 @@ def main():
             MENU_VEG: [RegexHandler('^(Горячие закуски|Холодные закуски|Супы|Основные блюда|Все блюда)$', menu_veg, pass_user_data=True)],
             MENU_SHOW: [RegexHandler('^(Да|Нет)$', menu_show, pass_user_data=True)],
             ORDER: [MessageHandler(Filters.text, order, pass_user_data=True)],
-            ORDER_INSERT: [MessageHandler(Filters.text, order_insert, pass_user_data=True)]
+            ORDER_INSERT: [MessageHandler(Filters.text, order_insert, pass_user_data=True)],
+            CHANGE_END: [RegexHandler('^(\d+)$', change_end, pass_user_data=True)]
         },
 
         fallbacks=[CommandHandler('end', end), MessageHandler(Filters.text, texter, pass_user_data=True)]
