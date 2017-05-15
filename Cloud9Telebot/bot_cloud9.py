@@ -16,9 +16,12 @@ def start(bot, update):
     em = emojize(':star:', use_aliases=True)
     bot.sendMessage(chat_id=id, text=em + em + em + '<b>Добро пожаловать в наш ресторан!</b> ' + em + em + em + '''
               Чтобы оформить заказ, наберите /order
-            Чтобы забронировать столик, наберите /book
-         Если хотите посмотреть наше меню, наберите /menu
-          Чтобы завершить работу с ботом, наберите /end
+          Чтобы забронировать столик, наберите /book
+             Чтобы изменить бронь, наберите /change
+             Чтобы отменить бронь, наберите /cancel
+        Если хотите посмотреть наше меню, наберите /menu
+    Чтобы прервать незавершенное действие, наберите /back
+        Чтобы завершить работу с ботом, наберите /end
              
              ''', parse_mode='HTML')
 # Бронирование
@@ -107,7 +110,7 @@ def book_choice(bot, update, user_data):
         c.execute("INSERT INTO Доходы VALUES ('%s', '%s', '%s')" % (d, price[0], summary[0] + price[0]))
         conn.commit()
         update.message.reply_text('Поздравляем! Вы забронировали столик №' + update.message.text + ' на ' + user_data['date'] + '!'
-        + '\nЕсли хотите отменить бронирование, нажмите /cancel.', reply_markup=ReplyKeyboardRemove())
+        + '\nЕсли хотите отменить бронирование, нажмите /cancel.' + '\nЧтобы изменить бронь, нажмите /change.', reply_markup=ReplyKeyboardRemove())
         user_data['book'] = update.message.text
     except:
         update.message.reply_text('К сожалению, забронировать не удалось. Попробуйте еще раз.', reply_markup=ReplyKeyboardRemove())
@@ -134,7 +137,7 @@ def book_button(bot, update, user_data):
             c.close()
             conn.close()
             update.message.reply_text('Поздравляем! Вы забронировали самый дешевый столик №' + str(user_data['cheapest']) + ' на ' + user_data['date'] + '!'
-            + '\nЕсли хотите отменить бронирование, нажмите /cancel.', reply_markup=ReplyKeyboardRemove())
+            + '\nЕсли хотите отменить бронирование, нажмите /cancel.' + '\nЧтобы изменить бронь, нажмите /change.', reply_markup=ReplyKeyboardRemove())
             user_data['book'] = user_data['cheapest']
         except:
             update.message.reply_text('К сожалению, забронировать не удалось. Попробуйте еще раз.', reply_markup=ReplyKeyboardRemove())
@@ -156,7 +159,7 @@ def book_button(bot, update, user_data):
             c.close()
             conn.close()
             update.message.reply_text('Поздравляем! Вы забронировали самый вместительный столик №' + str(user_data['biggest']) + ' на ' + user_data['date'] + '!'
-            + '\nЕсли хотите отменить бронирование, нажмите /cancel.', reply_markup=ReplyKeyboardRemove())
+            + '\nЕсли хотите отменить бронирование, нажмите /cancel.' + '\nЧтобы изменить бронь, нажмите /change.', reply_markup=ReplyKeyboardRemove())
             user_data['book'] = user_data['biggest']
         except:
             update.message.reply_text('К сожалению, забронировать не удалось. Попробуйте еще раз.', reply_markup=ReplyKeyboardRemove())
@@ -165,7 +168,7 @@ def book_button(bot, update, user_data):
 # Меню
 def menu(bot, update):
     id = update.message.chat_id
-    reply_keyboard = [['Горячие закуски', 'Холодные закуски'], ['Супы', 'Основные блюда'], ['Все блюда']]
+    reply_keyboard = [['Горячие закуски', 'Холодные закуски'], ['Супы', 'Основные блюда'], ['Десерты', 'Все блюда']]
     update.message.reply_text('Выберите категорию блюд', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     return MENU_VEG
     
@@ -204,6 +207,8 @@ def menu_show(bot, update, user_data):
             s = ':oden:'
         elif user_data['type'] == 'Супы':
             s = ':ramen:'
+        elif user_data['type'] == 'Десерты':
+            s = ':shaved_ice:'
         else:
             s = ':spaghetti:'
         for row in result:
@@ -262,7 +267,7 @@ def order_insert(bot, update, user_data):
         c.close()
         conn.close()
         update.message.reply_text('Такого блюда не существует. Напишите, пожалуйста, еще раз. Вы можете уточнить наше меню с помощью /menu')
-        return ConversationHandler.END
+        return ORDER_INSERT
     else:
         c.execute("INSERT INTO Заказы_Блюда (Заказ, Блюдо) VALUES ('%s','%s')" % (user_data['ord'], row[0]))
         conn.commit()
@@ -273,10 +278,11 @@ def order_insert(bot, update, user_data):
         conn.commit()
         update.message.reply_text('Блюдо добавлено в Ваш заказ!\n' + 
         'Вы можете написать еще блюдо, либо посмотреть наше меню с помощью /menu.\n' + 
-        'Чтобы завершить заказ, наберите /end')
+        'Наберите /back, если вы больше не хотите заказывать.\n' + 
+        'Чтобы завершить сеанс, наберите /end')
     c.close()
     conn.close()
-    return ConversationHandler.END
+    return ORDER_INSERT
 #Заказ - конец
 #Удаление брони
 def cancel(bot, update, user_data):
@@ -296,13 +302,13 @@ def cancel(bot, update, user_data):
 #Удаление брони - конец
 #Изменение брони
 def change(bot, update, user_data):
+    if 'book' not in user_data:
+        update.message.reply_text('Вы не бронировали столик в этом сеансе.')
+        return ConversationHandler.END
     update.message.reply_text('Введите номер столика, на который вы бы хотели поменять вашу бронь.')
     return CHANGE_END
     
 def change_end(bot, update, user_data):
-    if 'book' not in user_data:
-        update.message.reply_text('Вы не бронировали столик в этом сеансе.')
-        return ConversationHandler.END
     conn = sqlite3.connect('Restaurant.db')
     c = conn.cursor()
     try:
@@ -319,9 +325,14 @@ def change_end(bot, update, user_data):
     return ConversationHandler.END
 #Изменение брони - конец
 def end(bot, update, user_data):
-    update.message.reply_text('До скорой встречи и приятного аппетита!\n Чтобы получить справку, наберите /start',
+    update.message.reply_text('До скорой встречи и приятного аппетита!\nЧтобы получить справку, наберите /start',
                               reply_markup=ReplyKeyboardRemove())
     user_data.clear()
+    return ConversationHandler.END
+
+def back(bot, update, user_data):
+    update.message.reply_text('Вы прервали последнее действие.\nЧтобы получить справку, наберите /start',
+                              reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 def texter(bot, update):
@@ -346,14 +357,14 @@ def main():
             BOOK_RES: [RegexHandler('^(\d\d\d\d-\d\d-\d\d)$', book_res, pass_user_data=True)],
             BOOK_CHOICE: [RegexHandler('^(Самый дешевый|Самый вместительный)$', book_button, pass_user_data=True),
                 RegexHandler('^(\d+)$', book_choice, pass_user_data=True)],
-            MENU_VEG: [RegexHandler('^(Горячие закуски|Холодные закуски|Супы|Основные блюда|Все блюда)$', menu_veg, pass_user_data=True)],
+            MENU_VEG: [RegexHandler('^(Горячие закуски|Холодные закуски|Супы|Основные блюда|Десерты|Все блюда)$', menu_veg, pass_user_data=True)],
             MENU_SHOW: [RegexHandler('^(Да|Нет)$', menu_show, pass_user_data=True)],
             ORDER: [MessageHandler(Filters.text, order, pass_user_data=True)],
             ORDER_INSERT: [MessageHandler(Filters.text, order_insert, pass_user_data=True)],
             CHANGE_END: [RegexHandler('^(\d+)$', change_end, pass_user_data=True)]
         },
 
-        fallbacks=[CommandHandler('end', end), MessageHandler(Filters.text, texter, pass_user_data=True)]
+        fallbacks=[CommandHandler('end', end, pass_user_data=True), CommandHandler('back', back, pass_user_data=True), CommandHandler("menu", menu), MessageHandler(Filters.text, texter, pass_user_data=True)]
     )
     
     dispatcher.add_handler(conv_handler)

@@ -31,7 +31,7 @@ c.execute('''
 CREATE TABLE IF NOT EXISTS Блюда (
     Блюдо INTEGER PRIMARY KEY AUTOINCREMENT,
     Название TEXT UNIQUE NOT NULL,
-    Тип TEXT NOT NULL CHECK (Тип IN ('Горячие закуски', 'Холодные закуски', 'Супы', 'Основные блюда')),
+    Тип TEXT NOT NULL CHECK (Тип IN ('Горячие закуски', 'Холодные закуски', 'Супы', 'Основные блюда', 'Десерты')),
     Ингредиенты TEXT,
     Цена INTEGER NOT NULL,
     Наличие BOOLEAN NOT NULL,
